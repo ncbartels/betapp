@@ -256,6 +256,16 @@
                 }
             };
 
+            const updateProgress = async (id, progress) => {
+                try {
+                    setError(null);
+                    await airtableAPI.updateBet(id, { Progress: progress });
+                    await loadBets();
+                } catch (error) {
+                    setError('Failed to update progress. Please try again.');
+                }
+            };
+
             const markWon = async (id, winner) => {
                 try {
                     setError(null);
@@ -584,18 +594,69 @@
                             ])
                         ]),
                         React.createElement('div', {
-                            className: "text-slate-300 text-sm space-y-1",
+                            className: "text-slate-300 text-sm space-y-1 mb-3",
                             key: "details"
                         }, [
                             React.createElement('p', {
                                 key: "main"
-                            }, `${bet.Bettor} vs ${bet.BetAgainst} • $${bet.Amount}`),
+                            }, `${bet.Bettor} vs ${bet.BetAgainst} • ${bet.Amount}`),
                             bet.Odds && React.createElement('p', {
                                 key: "odds"
                             }, `Odds: ${bet.Odds}`),
                             bet.ResolveDate && React.createElement('p', {
                                 key: "date"
                             }, `Resolves: ${new Date(bet.ResolveDate).toLocaleDateString()}`)
+                        ]),
+                        // Progress section
+                        React.createElement('div', {
+                            className: "border-t border-slate-600 pt-3",
+                            key: "progress-section"
+                        }, [
+                            bet.Progress && React.createElement('div', {
+                                className: "bg-slate-700/50 rounded-lg p-3 mb-2",
+                                key: "current-progress"
+                            }, [
+                                React.createElement('p', {
+                                    className: "text-slate-300 text-xs font-medium mb-1",
+                                    key: "label"
+                                }, "Progress Update:"),
+                                React.createElement('p', {
+                                    className: "text-white text-sm",
+                                    key: "text"
+                                }, bet.Progress)
+                            ]),
+                            React.createElement('div', {
+                                className: "flex gap-2",
+                                key: "progress-input"
+                            }, [
+                                React.createElement('input', {
+                                    type: "text",
+                                    placeholder: "Add progress update...",
+                                    className: "flex-1 bg-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none",
+                                    key: "input",
+                                    onKeyPress: (e) => {
+                                        if (e.key === 'Enter') {
+                                            const value = e.target.value.trim();
+                                            if (value) {
+                                                updateProgress(bet.id, value);
+                                                e.target.value = '';
+                                            }
+                                        }
+                                    }
+                                }),
+                                React.createElement('button', {
+                                    onClick: (e) => {
+                                        const input = e.target.previousElementSibling;
+                                        const value = input.value.trim();
+                                        if (value) {
+                                            updateProgress(bet.id, value);
+                                            input.value = '';
+                                        }
+                                    },
+                                    className: "bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-2 rounded-lg transition-colors duration-200 text-sm font-medium",
+                                    key: "update-btn"
+                                }, "Update")
+                            ])
                         ])
                     ])))
                 ]),
@@ -646,7 +707,7 @@
                         }, [
                             React.createElement('p', {
                                 key: "main"
-                            }, `${bet.Bettor} vs ${bet.BetAgainst} • $${bet.Amount}`),
+                            }, `${bet.Bettor} vs ${bet.BetAgainst} • ${bet.Amount}`),
                             bet.Winner && React.createElement('p', {
                                 className: "text-green-400",
                                 key: "winner"
@@ -654,6 +715,20 @@
                             React.createElement('p', {
                                 key: "status"
                             }, `Status: ${bet.Status}`)
+                        ]),
+                        // Show final progress for completed bets
+                        bet.Progress && React.createElement('div', {
+                            className: "border-t border-slate-600 pt-3 mt-3",
+                            key: "final-progress"
+                        }, [
+                            React.createElement('p', {
+                                className: "text-slate-400 text-xs font-medium mb-1",
+                                key: "label"
+                            }, "Final Progress:"),
+                            React.createElement('p', {
+                                className: "text-slate-300 text-sm",
+                                key: "text"
+                            }, bet.Progress)
                         ])
                     ])))
                 ]),
