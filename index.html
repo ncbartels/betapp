@@ -84,32 +84,42 @@
             },
 
             async createBet(bet) {
+                console.log('Creating bet with data:', bet);
+                
+                const payload = {
+                    fields: {
+                        Description: bet.description,
+                        Amount: parseFloat(bet.amount),
+                        Bettor: bet.bettor,
+                        BetAgainst: bet.betAgainst,
+                        Odds: bet.odds || '',
+                        ResolveDate: bet.resolveDate || '',
+                        Status: bet.status || 'active',
+                        Winner: '',
+                        Created: new Date().toISOString()
+                    }
+                };
+                
+                console.log('Sending payload to Airtable:', JSON.stringify(payload, null, 2));
+                
                 try {
                     const response = await fetch(this.baseURL, {
                         method: 'POST',
                         headers: this.headers,
-                        body: JSON.stringify({
-                            fields: {
-                                Description: bet.description,
-                                Amount: parseFloat(bet.amount),
-                                Bettor: bet.bettor,
-                                BetAgainst: bet.betAgainst,
-                                Odds: bet.odds || '',
-                                ResolveDate: bet.resolveDate || '',
-                                Status: bet.status,
-                                Created: new Date().toISOString(),
-                                Winner: ''
-                            }
-                        })
+                        body: JSON.stringify(payload)
                     });
 
+                    console.log('Response status:', response.status);
+                    
                     if (!response.ok) {
                         const errorData = await response.json();
-                        console.error('Airtable error:', errorData);
+                        console.error('Airtable error response:', errorData);
                         throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData)}`);
                     }
 
-                    return await response.json();
+                    const result = await response.json();
+                    console.log('Success! Created bet:', result);
+                    return result;
                 } catch (error) {
                     console.error('Error creating bet:', error);
                     throw error;
@@ -204,6 +214,8 @@
             const addBet = async () => {
                 if (!newBet.description || !newBet.amount) return;
                 
+                console.log('Attempting to add bet:', newBet);
+                
                 try {
                     setError(null);
                     await airtableAPI.createBet(newBet);
@@ -219,6 +231,7 @@
                     setShowAddForm(false);
                     await loadBets();
                 } catch (error) {
+                    console.error('Add bet error:', error);
                     setError('Failed to add bet. Please try again.');
                 }
             };
