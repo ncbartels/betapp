@@ -214,6 +214,13 @@
             const addBet = async () => {
                 if (!newBet.description || !newBet.amount) return;
                 
+                // Check for banned combination
+                if ((newBet.bettor === 'Nolan' && newBet.betAgainst === 'Michael') || 
+                    (newBet.bettor === 'Michael' && newBet.betAgainst === 'Nolan')) {
+                    setError('Michael is banned from betting with Nolan');
+                    return;
+                }
+                
                 console.log('Attempting to add bet:', newBet);
                 
                 try {
