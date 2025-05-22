@@ -695,6 +695,46 @@
                     ])))
                 ]),
 
+                // Outstanding Balances (moved below active bets)
+                React.createElement('div', {
+                    className: "bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 mb-6 border border-slate-700",
+                    key: "balances"
+                }, [
+                    React.createElement('h3', {
+                        className: "text-lg font-semibold text-white mb-4 flex items-center gap-2",
+                        key: "title"
+                    }, [
+                        React.createElement('span', { key: "icon" }, "👥"),
+                        "Outstanding Balances"
+                    ]),
+                    ...friends.map(person => React.createElement('div', {
+                        key: person,
+                        className: "mb-3 last:mb-0"
+                    }, [
+                        React.createElement('p', {
+                            className: "text-white font-medium",
+                            key: "name"
+                        }, `${person} owes:`),
+                        React.createElement('div', {
+                            className: "ml-4 space-y-1",
+                            key: "debts"
+                        }, [
+                            ...friends.filter(f => f !== person).map(other => {
+                                const amount = totals[person][other];
+                                return amount > 0 ? React.createElement('p', {
+                                    key: other,
+                                    className: "text-red-400"
+                                }, `${amount.toFixed(2)} to ${other}`) : null;
+                            }).filter(Boolean),
+                            friends.filter(f => f !== person).every(other => totals[person][other] === 0) && 
+                            React.createElement('p', {
+                                className: "text-green-400",
+                                key: "settled"
+                            }, "All settled up! 🎉")
+                        ])
+                    ]))
+                ]),
+
                 // Completed Bets
                 completedBets.length > 0 && React.createElement('div', {
                     key: "completed-bets"
