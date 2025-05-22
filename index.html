@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bet Tracker - Nolan, Cole, Hawk Tuah & Guru</title>
+    <title>Bet Tracker - Nolan, Cole, Michael & Eithan</title>
     
     <!-- React and Babel -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -180,7 +180,7 @@
                 status: 'active'
             });
 
-            const friends = ['Nolan', 'Cole', 'Hawk Tuah', 'Guru'];
+            const friends = ['Nolan', 'Cole', 'Michael', 'Eithan'];
 
             const loadBets = useCallback(async () => {
                 try {
@@ -336,7 +336,7 @@
                         React.createElement('p', {
                             className: "text-slate-300",
                             key: "names"
-                        }, "Nolan, Cole, Hawk Tuah & Guru"),
+                        }, "Nolan, Cole, Michael & Eithan"),
                         React.createElement('button', {
                             onClick: refreshBets,
                             className: `p-1 rounded text-slate-300 hover:text-white transition-colors ${refreshing ? 'animate-spin' : 'hover:bg-slate-700'}`,
