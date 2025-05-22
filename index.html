@@ -530,9 +530,18 @@
                         }, [
                             React.createElement('button', {
                                 onClick: addBet,
-                                className: "flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors duration-200",
+                                disabled: (newBet.bettor === 'Nolan' && newBet.betAgainst === 'Michael') || 
+                                         (newBet.bettor === 'Michael' && newBet.betAgainst === 'Nolan'),
+                                className: `flex-1 font-semibold py-3 rounded-lg transition-colors duration-200 ${
+                                    (newBet.bettor === 'Nolan' && newBet.betAgainst === 'Michael') || 
+                                    (newBet.bettor === 'Michael' && newBet.betAgainst === 'Nolan')
+                                    ? 'bg-red-600 hover:bg-red-700 text-white cursor-not-allowed' 
+                                    : 'bg-green-600 hover:bg-green-700 text-white'
+                                }`,
                                 key: "add"
-                            }, "Add Bet"),
+                            }, (newBet.bettor === 'Nolan' && newBet.betAgainst === 'Michael') || 
+                               (newBet.bettor === 'Michael' && newBet.betAgainst === 'Nolan')
+                               ? '🚫 Banned' : 'Add Bet'),
                             React.createElement('button', {
                                 onClick: () => setShowAddForm(false),
                                 className: "flex-1 bg-slate-600 hover:bg-slate-700 text-white font-semibold py-3 rounded-lg transition-colors duration-200",
