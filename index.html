@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -34,13 +35,146 @@
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
         }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 50vh;
+        }
+        .spinner {
+            border: 3px solid #374151;
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useCallback } = React;
+
+        // Airtable Configuration
+        const AIRTABLE_CONFIG = {
+            baseId: 'applm38wEyJnVSDTV',
+            tableName: 'Bets',
+            apiKey: 'patrbGtTYdGSl8AZT.9373ff88a970f38ce3054984f45f1503703e317ed932164128e3ec2bc008919b'
+        };
+
+        // Airtable API helper functions
+        const airtableAPI = {
+            baseURL: `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${AIRTABLE_CONFIG.tableName}`,
+            
+            headers: {
+                'Authorization': `Bearer ${AIRTABLE_CONFIG.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+
+            async fetchBets() {
+                try {
+                    const response = await fetch(`${this.baseURL}?sort[0][field]=Created&sort[0][direction]=desc`, {
+                        headers: this.headers
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    return data.records.map(record => ({
+                        id: record.id,
+                        ...record.fields
+                    }));
+                } catch (error) {
+                    console.error('Error fetching bets:', error);
+                    throw error;
+                }
+            },
+
+            async createBet(bet) {
+                try {
+                    const response = await fetch(this.baseURL, {
+                        method: 'POST',
+                        headers: this.headers,
+                        body: JSON.stringify({
+                            fields: {
+                                Description: bet.description,
+                                Amount: bet.amount,
+                                Bettor: bet.bettor,
+                                BetAgainst: bet.betAgainst,
+                                Odds: bet.odds || '',
+                                ResolveDate: bet.resolveDate || '',
+                                Status: bet.status,
+                                Created: new Date().toISOString(),
+                                Winner: ''
+                            }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error creating bet:', error);
+                    throw error;
+                }
+            },
+
+            async updateBet(id, updates) {
+                try {
+                    const response = await fetch(`${this.baseURL}/${id}`, {
+                        method: 'PATCH',
+                        headers: this.headers,
+                        body: JSON.stringify({
+                            fields: updates
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error updating bet:', error);
+                    throw error;
+                }
+            },
+
+            async deleteBet(id) {
+                try {
+                    const response = await fetch(`${this.baseURL}/${id}`, {
+                        method: 'DELETE',
+                        headers: this.headers
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    return true;
+                } catch (error) {
+                    console.error('Error deleting bet:', error);
+                    throw error;
+                }
+            }
+        };
 
         // Simple SVG icons
         const Plus = () => (
@@ -97,8 +231,35 @@
             </svg>
         );
 
+        const RefreshCw = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="23,4 23,10 17,10"></polyline>
+                <polyline points="1,20 1,14 7,14"></polyline>
+                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+            </svg>
+        );
+
+        const Database = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+            </svg>
+        );
+
+        const AlertCircle = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        );
+
         const BettingTracker = () => {
             const [bets, setBets] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [refreshing, setRefreshing] = useState(false);
             const [showAddForm, setShowAddForm] = useState(false);
             const [newBet, setNewBet] = useState({
                 description: '',
@@ -112,52 +273,93 @@
 
             const friends = ['Nolan', 'Cole', 'Hawk Tuah', 'Guru'];
 
-            useEffect(() => {
-                const savedBets = JSON.parse(localStorage.getItem('friendsBets') || '[]');
-                setBets(savedBets);
+            const loadBets = useCallback(async () => {
+                try {
+                    setError(null);
+                    const betsData = await airtableAPI.fetchBets();
+                    setBets(betsData);
+                } catch (err) {
+                    setError('Failed to load bets. Check your connection.');
+                    console.error('Load error:', err);
+                } finally {
+                    setLoading(false);
+                    setRefreshing(false);
+                }
             }, []);
 
+            // Initial load
             useEffect(() => {
-                localStorage.setItem('friendsBets', JSON.stringify(bets));
-            }, [bets]);
+                loadBets();
+            }, [loadBets]);
 
-            const addBet = () => {
+            // Auto-refresh every 10 seconds
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    if (!loading && !refreshing) {
+                        setRefreshing(true);
+                        loadBets();
+                    }
+                }, 10000);
+
+                return () => clearInterval(interval);
+            }, [loadBets, loading, refreshing]);
+
+            const addBet = async () => {
                 if (!newBet.description || !newBet.amount) return;
                 
-                const bet = {
-                    id: Date.now(),
-                    ...newBet,
-                    amount: parseFloat(newBet.amount),
-                    createdAt: new Date().toISOString()
-                };
-                
-                setBets([bet, ...bets]);
-                setNewBet({
-                    description: '',
-                    amount: '',
-                    bettor: 'Nolan',
-                    betAgainst: 'Cole',
-                    odds: '',
-                    resolveDate: '',
-                    status: 'active'
-                });
-                setShowAddForm(false);
+                try {
+                    setError(null);
+                    await airtableAPI.createBet(newBet);
+                    setNewBet({
+                        description: '',
+                        amount: '',
+                        bettor: 'Nolan',
+                        betAgainst: 'Cole',
+                        odds: '',
+                        resolveDate: '',
+                        status: 'active'
+                    });
+                    setShowAddForm(false);
+                    // Refresh to show new bet
+                    await loadBets();
+                } catch (error) {
+                    setError('Failed to add bet. Please try again.');
+                }
             };
 
-            const removeBet = (id) => {
-                setBets(bets.filter(bet => bet.id !== id));
+            const removeBet = async (id) => {
+                try {
+                    setError(null);
+                    await airtableAPI.deleteBet(id);
+                    await loadBets();
+                } catch (error) {
+                    setError('Failed to remove bet. Please try again.');
+                }
             };
 
-            const markPaid = (id) => {
-                setBets(bets.map(bet => 
-                    bet.id === id ? { ...bet, status: 'paid' } : bet
-                ));
+            const markPaid = async (id) => {
+                try {
+                    setError(null);
+                    await airtableAPI.updateBet(id, { Status: 'paid' });
+                    await loadBets();
+                } catch (error) {
+                    setError('Failed to update bet. Please try again.');
+                }
             };
 
-            const markWon = (id, winner) => {
-                setBets(bets.map(bet => 
-                    bet.id === id ? { ...bet, status: 'won', winner } : bet
-                ));
+            const markWon = async (id, winner) => {
+                try {
+                    setError(null);
+                    await airtableAPI.updateBet(id, { Status: 'won', Winner: winner });
+                    await loadBets();
+                } catch (error) {
+                    setError('Failed to update bet. Please try again.');
+                }
+            };
+
+            const refreshBets = () => {
+                setRefreshing(true);
+                loadBets();
             };
 
             const calculateTotals = () => {
@@ -169,20 +371,31 @@
                     });
                 });
 
-                bets.filter(bet => bet.status === 'won').forEach(bet => {
-                    if (bet.winner === bet.bettor) {
-                        totals[bet.betAgainst][bet.bettor] += bet.amount;
+                bets.filter(bet => bet.Status === 'won').forEach(bet => {
+                    if (bet.Winner === bet.Bettor) {
+                        totals[bet.BetAgainst][bet.Bettor] += bet.Amount;
                     } else {
-                        totals[bet.bettor][bet.betAgainst] += bet.amount;
+                        totals[bet.Bettor][bet.BetAgainst] += bet.Amount;
                     }
                 });
 
                 return totals;
             };
 
+            if (loading) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="spinner mb-4"></div>
+                            <p className="text-white">Loading bets...</p>
+                        </div>
+                    </div>
+                );
+            }
+
             const totals = calculateTotals();
-            const activeBets = bets.filter(bet => bet.status === 'active');
-            const completedBets = bets.filter(bet => bet.status !== 'active');
+            const activeBets = bets.filter(bet => bet.Status === 'active');
+            const completedBets = bets.filter(bet => bet.Status !== 'active');
 
             return (
                 <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -192,8 +405,24 @@
                                 <DollarSign size={32} />
                                 <h1 className="text-3xl font-bold text-white">Bet Tracker</h1>
                             </div>
-                            <p className="text-slate-300">Nolan, Cole, Hawk Tuah & Guru</p>
+                            <div className="flex items-center justify-center gap-2">
+                                <p className="text-slate-300">Nolan, Cole, Hawk Tuah & Guru</p>
+                                <button 
+                                    onClick={refreshBets}
+                                    className={`p-1 rounded text-slate-300 hover:text-white transition-colors ${refreshing ? 'animate-spin' : 'hover:bg-slate-700'}`}
+                                    title="Refresh"
+                                >
+                                    <RefreshCw />
+                                </button>
+                            </div>
                         </div>
+
+                        {error && (
+                            <div className="bg-red-900/20 border border-red-700 rounded-xl p-4 mb-6 flex items-center gap-2">
+                                <AlertCircle />
+                                <p className="text-red-300 text-sm">{error}</p>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-4 mb-6">
                             <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
@@ -328,19 +557,19 @@
                                     {activeBets.map(bet => (
                                         <div key={bet.id} className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
                                             <div className="flex justify-between items-start mb-2">
-                                                <h4 className="text-white font-medium flex-1">{bet.description}</h4>
+                                                <h4 className="text-white font-medium flex-1">{bet.Description}</h4>
                                                 <div className="flex flex-col gap-2 ml-4">
                                                     <button
-                                                        onClick={() => markWon(bet.id, bet.bettor)}
+                                                        onClick={() => markWon(bet.id, bet.Bettor)}
                                                         className="bg-green-600/20 hover:bg-green-600/30 text-green-400 px-3 py-1 rounded-lg transition-colors duration-200 text-xs font-medium whitespace-nowrap"
                                                     >
-                                                        {bet.bettor} wins
+                                                        {bet.Bettor} wins
                                                     </button>
                                                     <button
-                                                        onClick={() => markWon(bet.id, bet.betAgainst)}
+                                                        onClick={() => markWon(bet.id, bet.BetAgainst)}
                                                         className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 px-3 py-1 rounded-lg transition-colors duration-200 text-xs font-medium whitespace-nowrap"
                                                     >
-                                                        {bet.betAgainst} wins
+                                                        {bet.BetAgainst} wins
                                                     </button>
                                                     <button
                                                         onClick={() => removeBet(bet.id)}
@@ -352,12 +581,12 @@
                                             </div>
                                             
                                             <div className="text-slate-300 text-sm space-y-1">
-                                                <p>{bet.bettor} vs {bet.betAgainst} • ${bet.amount}</p>
-                                                {bet.odds && <p>Odds: {bet.odds}</p>}
-                                                {bet.resolveDate && (
+                                                <p>{bet.Bettor} vs {bet.BetAgainst} • ${bet.Amount}</p>
+                                                {bet.Odds && <p>Odds: {bet.Odds}</p>}
+                                                {bet.ResolveDate && (
                                                     <p className="flex items-center gap-1">
                                                         <Calendar />
-                                                        Resolves: {new Date(bet.resolveDate).toLocaleDateString()}
+                                                        Resolves: {new Date(bet.ResolveDate).toLocaleDateString()}
                                                     </p>
                                                 )}
                                             </div>
@@ -374,9 +603,9 @@
                                     {completedBets.map(bet => (
                                         <div key={bet.id} className="bg-slate-800/30 backdrop-blur-sm rounded-xl p-4 border border-slate-600">
                                             <div className="flex justify-between items-start mb-2">
-                                                <h4 className="text-slate-300 font-medium flex-1">{bet.description}</h4>
+                                                <h4 className="text-slate-300 font-medium flex-1">{bet.Description}</h4>
                                                 <div className="flex gap-2 ml-4">
-                                                    {bet.status === 'won' && (
+                                                    {bet.Status === 'won' && (
                                                         <button
                                                             onClick={() => markPaid(bet.id)}
                                                             className="bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 p-2 rounded-lg transition-colors duration-200"
@@ -395,11 +624,11 @@
                                             </div>
                                             
                                             <div className="text-slate-400 text-sm space-y-1">
-                                                <p>{bet.bettor} vs {bet.betAgainst} • ${bet.amount}</p>
-                                                {bet.winner && (
-                                                    <p className="text-green-400">Winner: {bet.winner}</p>
+                                                <p>{bet.Bettor} vs {bet.BetAgainst} • ${bet.Amount}</p>
+                                                {bet.Winner && (
+                                                    <p className="text-green-400">Winner: {bet.Winner}</p>
                                                 )}
-                                                <p className="capitalize">Status: {bet.status}</p>
+                                                <p className="capitalize">Status: {bet.Status}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -407,7 +636,7 @@
                             </div>
                         )}
 
-                        {bets.length === 0 && (
+                        {bets.length === 0 && !loading && (
                             <div className="text-center py-12">
                                 <DollarSign size={64} />
                                 <p className="text-slate-400 text-lg mt-4">No bets yet!</p>
@@ -417,9 +646,3 @@
                     </div>
                 </div>
             );
-        };
-
-        ReactDOM.render(<BettingTracker />, document.getElementById('root'));
-    </script>
-</body>
-</html>
