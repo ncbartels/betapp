@@ -91,7 +91,7 @@
                         body: JSON.stringify({
                             fields: {
                                 Description: bet.description,
-                                Amount: bet.amount,
+                                Amount: parseFloat(bet.amount),
                                 Bettor: bet.bettor,
                                 BetAgainst: bet.betAgainst,
                                 Odds: bet.odds || '',
@@ -104,7 +104,9 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const errorData = await response.json();
+                        console.error('Airtable error:', errorData);
+                        throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData)}`);
                     }
 
                     return await response.json();
